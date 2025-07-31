@@ -1,10 +1,12 @@
-import periodictable.core
+# import periodictable.core
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLineEdit, QLabel,
                              QPushButton, QTableWidget, QTableWidgetItem,
                              QHeaderView, QTextEdit, QHBoxLayout, QGridLayout)
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtCore import Qt
 from periodictable import elements
+
+from ui.ChemistryTab import Ui_ChemistryTab
 
 from chem.core import parse_formula, calculate_molar_mass
 from chem.constants import CATEGORY_COLORS, ELEMENT_POSITIONS, ELEMENTS_RU
@@ -16,42 +18,18 @@ class ChemistryTab(QWidget):
     """
 
     def __init__(self) -> None:
-
         super().__init__()
-        self.formula_input = QLineEdit(placeholderText="Введите формулу (H2SO4)")
-        self.calculate_btn = QPushButton("Рассчитать")
-        self.result_label = QLabel("Результат:")
-        self.result_area = QTextEdit(readOnly=True)
+        self.ui = Ui_ChemistryTab()
+        self.ui.setupUi(self)
+        # Кнопка поиска элемента
+        self.ui.search_btn.clicked.connect(self.find_symbol)
+        # Кнопка для расчета формулы
+        self.ui.calculate_btn.clicked.connect(self.calculate)
 
-        self.element_search = QLineEdit(placeholderText="Введите название (водород, железо)")
-        self.search_btn = QPushButton("Найти символ")
-        self.symbol_result_label = QLabel("Результат:")
-        self.symbol_result_area = QTextEdit(readOnly=True)
-
-        # Кнопки расчетов
-        self.mass_btn = QPushButton("Молярная масса")
-        self.composition_btn = QPushButton("Состав")
+         # # Кнопки расчетов
+        # self.mass_btn = QPushButton("Молярная масса")
+        # self.composition_btn = QPushButton("Состав")
         # self.balance_btn = QPushButton("Балансировка")
-
-        self.setup_ui()
-
-    def setup_ui(self) -> None:
-
-        layout = QGridLayout()
-
-        layout.addWidget(QLabel("Поиск элемента"), 0, 0)
-        layout.addWidget(self.element_search, 0, 1)
-        layout.addWidget(self.search_btn, 0, 2)
-        layout.addWidget(self.symbol_result_area, 2, 0, 1, 4)
-
-        layout.addWidget(QLabel("Расчет формулы:"), 3, 0)
-        layout.addWidget(self.formula_input, 3, 1)
-        layout.addWidget(self.calculate_btn, 3, 2)
-        layout.addWidget(self.result_area, 4, 0, 1, 4)
-
-        self.setLayout(layout)
-        self.search_btn.clicked.connect(self.find_symbol)
-        self.calculate_btn.clicked.connect(self.calculate)
 
     def calculate(self) -> None:
         """
@@ -59,17 +37,17 @@ class ChemistryTab(QWidget):
         Биндится на кнопку "рассчитать"
         """
 
-        formula = self.formula_input.text().strip()
+        formula = self.ui.formula_input.text().strip()
         print(f"FORMULA, {formula}")
         if not formula:
-            self.result_area.setHtml(
+            self.ui.result_area.setHtml(
                 f"<font color='red'>Необходимо ввести формулу</font>")
         else:
             try:
                 mass = calculate_molar_mass(formula)
                 composition = parse_formula(formula)
-            except Exception as err:
-                self.result_area.setHtml(f"<font color='red'>{err}</font>")
+            except Exception:
+                self.ui.result_area.setHtml(f"<font color='red'>Неверный запрос</font>")
                 return
 
             # Форматируем вывод
@@ -84,7 +62,7 @@ class ChemistryTab(QWidget):
                     f"- {elem}: {count} атом(a/ов) → {percent:.2f}%"
                 )
 
-            self.result_area.setHtml("<br>".join(result_html))
+            self.ui.result_area.setHtml("<br>".join(result_html))
 
     def show_similar_names(self, name: str) -> None:
         """
@@ -92,7 +70,7 @@ class ChemistryTab(QWidget):
         """
         similar = [k for k in ELEMENTS_RU if name in k or k.startswith(name[:3])]
         if similar:
-            self.symbol_result_area.setText(
+            self.ui.symbol_result_area.setText(
                 "Возможные варианты:\n" +
                 "\n".join(f"{k} → {ELEMENTS_RU[k]}" for k in similar)
             )
@@ -101,19 +79,19 @@ class ChemistryTab(QWidget):
         """
         Поиск химических элементов по названиям на русском языке
         """
-        name = self.element_search.text().strip().lower()
+        name = self.ui.element_search.text().strip().lower()
 
         if name in ELEMENTS_RU:
             symbol = ELEMENTS_RU[name]
             # elem = elements[symbol]  # Получаем данные элемента
 
-            self.symbol_result_area.setText(
+            self.ui.symbol_result_area.setText(
                 f"<b>{symbol}</b><br>"
                 # f"Атомный номер: {elem.number}<br>"
                 # f"Атомная масса: {elem.mass:.2f}"
             )
         else:
-            self.symbol_result_area.setText("Не найдено")
+            self.ui.symbol_result_area.setText("Не найдено")
             self.show_similar_names(name)
 
 
@@ -127,9 +105,9 @@ class PeriodicTableTab(QWidget):
         super().__init__()
         self.table = None
         self.legend = None
-        self.init_ui()
+        self.setup_ui()
 
-    def init_ui(self) -> None:
+    def setup_ui(self) -> None:
 
         layout = QVBoxLayout()
 
@@ -147,7 +125,7 @@ class PeriodicTableTab(QWidget):
 
         # Заполняем таблицу
         for elem in elements:
-            elem: periodictable.core.Element
+            # elem: periodictable.core.Element
             if elem.number in ELEMENT_POSITIONS:
                 row, col = ELEMENT_POSITIONS[elem.number]
                 item = QTableWidgetItem(f"{elem.symbol}\n{elem.number}")

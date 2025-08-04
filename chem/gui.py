@@ -1,14 +1,13 @@
-# import periodictable.core
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLineEdit, QLabel,
-                             QPushButton, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QTextEdit, QHBoxLayout, QGridLayout)
+from PyQt5.QtWidgets import (QWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtCore import Qt
 from periodictable import elements
 
 from ui.ChemistryTab import Ui_ChemistryTab
+from ui.PeriodicTableTab import Ui_PeriodicTab
 
-from chem.core import parse_formula, calculate_molar_mass
+
+from chem.core import parse_formula, calculate_molar_mass, grams_to_moles
 from chem.constants import CATEGORY_COLORS, ELEMENT_POSITIONS, ELEMENTS_RU
 
 
@@ -21,15 +20,23 @@ class ChemistryTab(QWidget):
         super().__init__()
         self.ui = Ui_ChemistryTab()
         self.ui.setupUi(self)
-        # Кнопка поиска элемента
         self.ui.search_btn.clicked.connect(self.find_symbol)
-        # Кнопка для расчета формулы
         self.ui.calculate_btn.clicked.connect(self.calculate)
+        self.ui.convert_btn.clicked.connect(self.convert_grams_to_moles)
 
-         # # Кнопки расчетов
-        # self.mass_btn = QPushButton("Молярная масса")
-        # self.composition_btn = QPushButton("Состав")
-        # self.balance_btn = QPushButton("Балансировка")
+    def convert_grams_to_moles(self) -> None:
+        formula = self.ui.line_convert_formula.text().strip()
+        grams = self.ui.line_convert_gramms.text().strip()
+        if not formula:
+
+            self.ui.convert_res_area.setHtml(
+                f"<font color='red'>Необходимо ввести формулу</font>")
+        try:
+            result = str(grams_to_moles(formula, float(grams)))
+        except Exception:
+            self.ui.convert_res_area.setHtml(f"<font color='red'>Неверный запрос</font>")
+            return
+        self.ui.convert_res_area.setHtml(f"<b>Итого:</b> {result} моль")
 
     def calculate(self) -> None:
         """
@@ -37,32 +44,30 @@ class ChemistryTab(QWidget):
         Биндится на кнопку "рассчитать"
         """
 
-        formula = self.ui.formula_input.text().strip()
-        print(f"FORMULA, {formula}")
+        formula = self.ui.line_formula_calc.text().strip()
+
         if not formula:
-            self.ui.result_area.setHtml(
+            self.ui.calc_res_area.setHtml(
                 f"<font color='red'>Необходимо ввести формулу</font>")
-        else:
-            try:
-                mass = calculate_molar_mass(formula)
-                composition = parse_formula(formula)
-            except Exception:
-                self.ui.result_area.setHtml(f"<font color='red'>Неверный запрос</font>")
-                return
+        try:
+            mass = calculate_molar_mass(formula)
+            composition = parse_formula(formula)
+        except Exception:
+            self.ui.calc_res_area.setHtml(f"<font color='red'>Неверный запрос</font>")
+            return
 
-            # Форматируем вывод
-            result_html = [
-                f"<b>Формула:</b> {formula}",
-                f"<b>Молярная масса:</b> {mass} g/mol",
-                "<br><b>Состав:</b>"
-            ]
+        result_html = [
+            f"<b>Формула:</b> {formula}",
+            f"<b>Молярная масса:</b> {mass} гр/моль",
+            "<br><b>Состав:</b>"
+        ]
 
-            for elem, (count, percent) in composition.items():
-                result_html.append(
-                    f"- {elem}: {count} атом(a/ов) → {percent:.2f}%"
-                )
+        for elem, (count, percent) in composition.items():
+            result_html.append(
+                f"- {elem}: {count} атом(a/ов) → {percent:.2f}%"
+            )
 
-            self.ui.result_area.setHtml("<br>".join(result_html))
+        self.ui.calc_res_area.setHtml("<br>".join(result_html))
 
     def show_similar_names(self, name: str) -> None:
         """
@@ -70,7 +75,7 @@ class ChemistryTab(QWidget):
         """
         similar = [k for k in ELEMENTS_RU if name in k or k.startswith(name[:3])]
         if similar:
-            self.ui.symbol_result_area.setText(
+            self.ui.search_res_area.setText(
                 "Возможные варианты:\n" +
                 "\n".join(f"{k} → {ELEMENTS_RU[k]}" for k in similar)
             )
@@ -79,51 +84,27 @@ class ChemistryTab(QWidget):
         """
         Поиск химических элементов по названиям на русском языке
         """
-        name = self.ui.element_search.text().strip().lower()
+        name = self.ui.line_element_search.text().strip().lower()
 
         if name in ELEMENTS_RU:
             symbol = ELEMENTS_RU[name]
-            # elem = elements[symbol]  # Получаем данные элемента
 
-            self.ui.symbol_result_area.setText(
+            self.ui.search_res_area.setText(
                 f"<b>{symbol}</b><br>"
-                # f"Атомный номер: {elem.number}<br>"
-                # f"Атомная масса: {elem.mass:.2f}"
             )
         else:
-            self.ui.symbol_result_area.setText("Не найдено")
+            self.ui.search_res_area.setText("Не найдено")
             self.show_similar_names(name)
 
+class PeriodTableTab(QWidget):
 
-class PeriodicTableTab(QWidget):
-    """
-    Периодическая таблица Менделеева.
-    """
-
-    def __init__(self) -> None:
-
+    def __init__(self):
         super().__init__()
-        self.table = None
-        self.legend = None
-        self.setup_ui()
+        self.ui = Ui_PeriodicTab()
+        self.ui.setupUi(self)
+        self.fill_elements()
 
-    def setup_ui(self) -> None:
-
-        layout = QVBoxLayout()
-
-        # Таблица: 10 строк x 18 столбцов
-        self.table = QTableWidget(9, 18)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setVisible(False)
-
-        # Размеры ячеек
-        for col in range(18):
-            self.table.setColumnWidth(col, 60)
-        for row in range(9):
-            self.table.setRowHeight(row, 60)
-
-        # Заполняем таблицу
+    def fill_elements(self) -> None:
         for elem in elements:
             # elem: periodictable.core.Element
             if elem.number in ELEMENT_POSITIONS:
@@ -137,47 +118,14 @@ class PeriodicTableTab(QWidget):
                     item.setBackground(CATEGORY_COLORS[category])
                     item.setForeground(QColor(0, 0, 0))
 
-                self.table.setItem(row, col, item)
+                self.ui.periodic_table.setItem(row, col, item)
+        self.ui.periodic_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        self.legend = self.create_legend()
-        layout.addWidget(self.legend)
-        layout.addWidget(self.table)
-        self.setLayout(layout)
+        # self.legend = self.create_legend()
+        # layout.addWidget(self.legend)
+        # layout.addWidget(self.table)
+        # self.setLayout(layout)
 
-    @staticmethod
-    def create_legend() -> QLabel:
-        """
-        Создает легенду цветов для таблицы Менделеева
-        """
-
-        legend_html = """
-        <div style="
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: Arial;
-            font-size: 12px;
-        ">
-            <h3 style="margin-top: 0; text-align: center;">Легенда</h3>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
-                <div style="background-color: rgb(255, 182, 193); padding: 5px; border-radius: 3px;">Щелочные металлы</div>
-                <div style="background-color: rgb(255, 228, 181); padding: 5px; border-radius: 3px;">Щелочноземельные</div>
-                <div style="background-color: rgb(179, 229, 252); padding: 5px; border-radius: 3px;">Переходные металлы</div>
-                <div style="background-color: rgb(220, 220, 220); padding: 5px; border-radius: 3px;">Металлы</div>
-                <div style="background-color: rgb(144, 238, 144); padding: 5px; border-radius: 3px;">Неметаллы</div>
-                <div style="background-color: rgb(255, 255, 153); padding: 5px; border-radius: 3px;">Полуметаллы</div>
-                <div style="background-color: rgb(255, 215, 0); padding: 5px; border-radius: 3px;">Галогены</div>
-                <div style="background-color: rgb(173, 216, 230); padding: 5px; border-radius: 3px;">Инертные газы</div>
-                <div style="background-color: rgb(255, 160, 122); padding: 5px; border-radius: 3px;">Лантаноиды</div>
-                <div style="background-color: rgb(255, 105, 180); padding: 5px; border-radius: 3px;">Актиноиды</div>
-            </div>
-        </div>
-        """
-
-        legend = QLabel(legend_html)
-        legend.setTextFormat(Qt.RichText)
-        legend.setAlignment(Qt.AlignCenter)
-        return legend
 
     @staticmethod
     def get_element_category(elem):
@@ -197,3 +145,38 @@ class PeriodicTableTab(QWidget):
         if 72 <= elem.number <= 80: return "transition"
         if 104 <= elem.number <= 112: return "transition"
         return "metal"
+
+#     @staticmethod
+#     def create_legend() -> QLabel:
+#         """
+#         Создает легенду цветов для таблицы Менделеева
+#         """
+#
+#         legend_html = """
+#         <div style="
+#             background: white;
+#             padding: 10px;
+#             border-radius: 5px;
+#             font-family: Arial;
+#             font-size: 12px;
+#         ">
+#             <h3 style="margin-top: 0; text-align: center;">Легенда</h3>
+#             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
+#                 <div style="background-color: rgb(255, 182, 193); padding: 5px; border-radius: 3px;">Щелочные металлы</div>
+#                 <div style="background-color: rgb(255, 228, 181); padding: 5px; border-radius: 3px;">Щелочноземельные</div>
+#                 <div style="background-color: rgb(179, 229, 252); padding: 5px; border-radius: 3px;">Переходные металлы</div>
+#                 <div style="background-color: rgb(220, 220, 220); padding: 5px; border-radius: 3px;">Металлы</div>
+#                 <div style="background-color: rgb(144, 238, 144); padding: 5px; border-radius: 3px;">Неметаллы</div>
+#                 <div style="background-color: rgb(255, 255, 153); padding: 5px; border-radius: 3px;">Полуметаллы</div>
+#                 <div style="background-color: rgb(255, 215, 0); padding: 5px; border-radius: 3px;">Галогены</div>
+#                 <div style="background-color: rgb(173, 216, 230); padding: 5px; border-radius: 3px;">Инертные газы</div>
+#                 <div style="background-color: rgb(255, 160, 122); padding: 5px; border-radius: 3px;">Лантаноиды</div>
+#                 <div style="background-color: rgb(255, 105, 180); padding: 5px; border-radius: 3px;">Актиноиды</div>
+#             </div>
+#         </div>
+#         """
+#
+#         legend = QLabel(legend_html)
+#         legend.setTextFormat(Qt.RichText)
+#         legend.setAlignment(Qt.AlignCenter)
+#         return legend

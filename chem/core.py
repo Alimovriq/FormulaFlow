@@ -1,10 +1,8 @@
-from typing import Dict
-
 from chempy import Substance
 from periodictable import elements
 
 
-def parse_formula(formula: str) -> Dict:
+def parse_formula(formula: str) -> dict:
     """
     Разбирает формулу на элементы с их массовой долей
     formula: - химическая формула
@@ -25,12 +23,20 @@ def parse_formula(formula: str) -> Dict:
     return composition
 
 
-def calculate_molar_mass(formula: str) -> str:
+def calculate_molar_mass(formula: str) -> str :
     """
     Вычисляет молярную массу в g/mol.
     formula: - химическая формула
     """
 
     mass = Substance.from_formula(formula).mass
-
     return f"Молярная масса {formula} = {mass:.2f}"
+
+
+def grams_to_moles(formula: str, grams: int | float) -> int | float:
+    """
+    Конвертация граммов в моли
+    """
+
+    molar_mass = Substance.from_formula(formula).mass
+    return grams / molar_mass

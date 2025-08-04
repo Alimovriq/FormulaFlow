@@ -2,8 +2,7 @@ import sys
 
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QApplication
 from ui.MainWindow_ui import Ui_MainWindow
-from chem.gui import ChemistryTab, PeriodicTableTab
-# from diagram.editor import DiagramEditor
+from chem.gui import ChemistryTab, PeriodTableTab
 
 
 class MainWindow(QMainWindow):
@@ -16,8 +15,6 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        # # Вкладки
-        # 1. Химические вычисления
         chemistry_tab = self.ui.chemestry_operations
         if chemistry_tab.layout() is None:
             chemistry_tab.setLayout(QVBoxLayout())
@@ -25,13 +22,11 @@ class MainWindow(QMainWindow):
         self.chemistry_widget = ChemistryTab()
         chemistry_tab.layout().addWidget(self.chemistry_widget)
 
-        # self.ui.tabWidget.addTab(ChemistryTab(), "Расчет формул")
-        # self.tabs = QTabWidget()
-        # self.tabs.addTab(ChemistryTab(), "Расчет формул")
-        # self.tabs.addTab(PeriodicTableTab(), "Таблица Менделеева")
-        # # self.tabs.addTab(DiagramEditor(), "Схемы")
-        #
-        # self.setCentralWidget(self.tabs)
+        periodic_table_tab = self.ui.periodic_table
+        if periodic_table_tab.layout() is None:
+            periodic_table_tab.setLayout(QVBoxLayout())
+        self.periodic_table_widget = PeriodTableTab()
+        periodic_table_tab.layout().addWidget(self.periodic_table_widget)
 
 
 if __name__ == "__main__":
